@@ -4,6 +4,9 @@
  * @flow
  */
 
+const Login = require('./Login');
+//const Positions = require('./Positions');
+
 import React, { Component } from 'react';
 import {
   AppRegistry,
@@ -11,42 +14,192 @@ import {
   Text,
   Button,
   Picker,
-  View
+  View,
+  Linking,
+  AsyncStorage,
+  Alert,
 } from 'react-native';
 
 import { StackNavigator } from 'react-navigation';
+import PositionsScreen from './PositionsScreen';
 
+const API_PATH = "http://10.10.246.131:3000/"; //"https://api.sberpb.com/"
 //export default class SberPB extends Component {
-class PositionsScreen extends React.Component{
+class SelectionScreen extends React.Component{
   static navigationOptions = {
-    title: 'Клиент',
+    title: 'Select Action',
   };
   constructor(props) {
     super(props);
-    this.username='zuoqin';
-    this.password='Qwerty123';
     this.state = {
-      language: "js",
+      clients: ['AANDF', 'AAOYF'],
+      securities: ['GAZP', 'LKOH']
     }
   };
 
+
+  componentDidMount() {
+  {/*
+    Linking.getInitialURL().then((url) => {
+      AsyncStorage.removeItem('SberPBAppState');
+      //AsyncStorage.setItem('UIExplorerAppState', JSON.stringify({isLoggedIn: false}));
+      AsyncStorage.getItem('SberPBAppState', (err, storedString) => {
+        const moduleAction = URIActionMap(this.props.appFromAppetizeParams);
+        const urlAction = URIActionMap(url);
+        const launchAction = moduleAction || urlAction;
+        if (err || !storedString) {
+          const initialAction = launchAction || {type: 'InitialAction'};
+     
+          this.setState(UIExplorerNavigationReducer(null, initialAction));
+          this.setState({isLoggedIn: false});
+          return;
+        }
+        const storedState = JSON.parse(storedString);
+        if (launchAction) {
+          if( storedState.isLoggedIn === undefined || storedState.isLoggedIn === null){
+            storedState.isLoggedIn = false;
+          }          
+          this.setState(UIExplorerNavigationReducer(storedState, launchAction));
+          return;
+        }
+        if( storedState.isLoggedIn === undefined ){
+          storedState.isLoggedIn = false;
+        }
+        this.setState(storedState);
+      });
+    });*/}
+  }
+
+
+  setClientsList(responsedata){
+    //this._showAlert('Download', 'Logged in successfull: ' + responsedata.access_token);
+    const { navigate } = this.props.navigation;
+    this.setState(
+      {
+        clients: responsedata,
+      },
+      () => AsyncStorage.setItem('SberPBAppState', JSON.stringify(this.state))
+    );
+
+    navigate('Positions', {token: this.state.token, clients: this.state.clients, securities: this.state.securities});
+  };
+
+
+
+  requestClients(){
+
+    var authorization = 'Bearer ' + this.state.token;
+    
+    console.log('trying to login with token: ' + this.state.token);
+    var settings = {
+      method: "GET",
+      headers: {
+        'Accept': 'application/json',
+        'authorization': authorization,
+      },      
+    };      
+    fetch(API_PATH + "api/client", settings)
+      .then((response) => response.json())
+      .then((responseData) => {
+        this.setClientsList(responseData);
+        console.log(responseData[0]);
+      })
+      .catch((error) => {
+        this._showAlert('GET Clients', 'Retrieve clients error: ' + error.message);
+      })    
+  }
+
+
+  setLoginUser(responsedata){
+    //this._showAlert('Download', 'Logged in successfull: ' + responsedata.access_token);
+    const { navigate } = this.props.navigation;
+    this.setState(
+      {
+        isLoggedIn: true,
+        token: responsedata.access_token
+      },
+      () => AsyncStorage.setItem('SberPBAppState', JSON.stringify(this.state))
+    );
+    this.requestClients();
+    //navigate('Positions', {token: this.state.token, clients: this.state.clients, securities: this.state.securities});
+  };
+
+  _showAlert(title, message) {
+    //console.log('1111111Ask me later pressed');
+    // Works on both iOS and Android
+    Alert.alert(
+      title,
+      message,
+      [
+        {text: 'OK', onPress: () => console.log('OK Pressed')},
+      ]
+    )    
+  }
+
+  onLogin(){
+
+    var body = 'grant_type=password&username=' + this.username + '&password=' + this.password;
+
+    console.log('trying to login with body: ' + body);
+    var settings = {
+      method: "POST",
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body,
+    };      
+    fetch(API_PATH + "token", settings)
+      .then((response) => response.json())
+      .then((responseData) => {
+        this.setLoginUser(responseData);
+        console.log(responseData);
+      })
+      .catch((error) => {
+        this._showAlert('Login', 'Logged in with error: ' + error.message);
+        this.state.isLoading = false;
+        this.state.resultsData = this.setPageGetResult([]);//this.getDataSource([])
+      })    
+  }
+
+
   render() {
     const { navigate } = this.props.navigation;
-    return (
-      <View>
-        {/*<Text>Hello, Chat App!</Text>*/}
-        <Picker
-          selectedValue={this.state.language}
-          onValueChange={(itemValue, itemIndex) => this.setState({language: itemValue})}>
-          <Picker.Item label="Java" value="java" />
-          <Picker.Item label="JavaScript" value="js" />
-        </Picker>        
-        <Button
-          onPress={() => navigate('Chat', { user: 'Lucy' })}
-          title="Chat with Lucy"
-        />
-      </View>
-    );
+
+    if(this.state.isLoggedIn === true){
+      return (
+        <View>
+          {/*<Text>Hello, Chat App!</Text>*/}
+          <Text>Logged in: {this.state.username}</Text>
+        </View>
+      )
+    } else{
+      return(<View style={[styles.listContainer, this.props.style]}>
+        <Login
+          onLogin = {(event) => {
+            this.onLogin(event);
+            
+            console.log('on login in index.android');
+          }}
+          
+          onEndUserNameEditing={(event) => {
+            console.log('user name finished change');
+            var username = event.nativeEvent.text;
+            console.log(username);
+
+            this.username = username;
+          }}
+
+          onPasswordChange={(event) => {
+            console.log('password finished editing');
+            var password = event.nativeEvent.text;
+            console.log(password);
+
+            this.password = password;
+          }}        
+        />        
+      </View>)
+    }
   }
 }
 
@@ -86,8 +239,10 @@ const styles = StyleSheet.create({
 });
 
 const SberPB = StackNavigator({
+  Selection: {screen: SelectionScreen},
   Positions: { screen: PositionsScreen },
   Chat: { screen: ChatScreen },
+  
 });
 
 
