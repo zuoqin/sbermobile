@@ -21,6 +21,7 @@ import {
   TouchableNativeFeedback,
   TouchableWithoutFeedback,
   TouchableOpacity,
+  Alert
 } from 'react-native';
 
 import BackgroundTimer from 'react-native-background-timer';
@@ -55,8 +56,26 @@ export default class PositionsScreen extends React.Component{
   };
 
 
+  setClientAndPositions(){
+    this.setState({selectedclient: this.props.navigation.state.params.clients[0]});
+    const intervalId = BackgroundTimer.setTimeout(() => {
+      // this will be executed every 200 ms
+      // even when app is the the background
+      this.getPositions();
+      console.log('tic');
+    }, 200); 
+  }
+
   componentDidMount() {
-  {/*
+  {
+    
+    const intervalId = BackgroundTimer.setTimeout(() => {
+      // this will be executed every 200 ms
+      // even when app is the the background
+      this.setClientAndPositions();
+      console.log('tic');
+    }, 200);     
+    /*
     Linking.getInitialURL().then((url) => {
       AsyncStorage.removeItem('SberPBAppState');
       //AsyncStorage.setItem('UIExplorerAppState', JSON.stringify({isLoggedIn: false}));
@@ -155,8 +174,8 @@ export default class PositionsScreen extends React.Component{
     console.log('client=' + client + ' index=' + index);
     this.setState({selectedclient: client});
 
-    // Start a timer that runs continuous after X milliseconds
-    const intervalId = BackgroundTimer.setInterval(() => {
+    // Start a timer that runs once after X milliseconds
+    const intervalId = BackgroundTimer.setTimeout(() => {
       // this will be executed every 200 ms
       // even when app is the the background
       this.getPositions();
@@ -206,6 +225,18 @@ export default class PositionsScreen extends React.Component{
   };
 
 
+
+  _showAlert(title, message) {
+    console.log('1111111Ask me later pressed');
+    // Works on both iOS and Android
+    Alert.alert(
+      title,
+      message,
+      [
+        {text: 'OK', onPress: () => console.log('OK Pressed')},
+      ]
+    )    
+  }
 
 
   render() {

@@ -97,7 +97,7 @@ class PositionCell extends Component {
             <View style={styles.cellContainer}>
 
               <View style={styles.cellTextContainer}>
-                <Text>{security.acode} {this.props.position[1].amount} {this.props.position[1].price} {this.props.position[1].rubprice} {this.props.position[1].wapusd}</Text>
+                <Text>{security.acode} {this.props.position[1].amount} {Math.round(this.props.position[1].price * 100)/100.0} {Math.round(this.props.position[1].rubprice * 100)/100.0} {Math.round(this.props.position[1].wapusd * 100)/100.0}</Text>
               </View>
             </View>
           </TouchableHighlight>
