@@ -23,7 +23,10 @@ import {
 import { StackNavigator } from 'react-navigation';
 import PositionsScreen from './PositionsScreen';
 
-const API_PATH = "http://10.10.246.131:3000/"; //"https://api.sberpb.com/"
+GLOBAL = require('./global');
+
+
+//const API_PATH = "http://10.10.246.131:3000/"; //"https://api.sberpb.com/"
 //export default class SberPB extends Component {
 class SelectionScreen extends React.Component{
   static navigationOptions = {
@@ -70,6 +73,44 @@ class SelectionScreen extends React.Component{
     });*/}
   }
 
+  setSecuritiesList(responsedata){
+    //this._showAlert('Download', 'Logged in successfull: ' + responsedata.access_token);
+    const { navigate } = this.props.navigation;
+    this.setState(
+      {
+        securities: responsedata,
+      },
+      () => AsyncStorage.setItem('SberPBAppState', JSON.stringify(this.state))
+    );
+
+    navigate('Positions', {token: this.state.token, clients: this.state.clients, securities: this.state.securities});
+  };
+
+
+
+  requestSecurities(){
+
+    var authorization = 'Bearer ' + this.state.token;
+    
+    console.log('trying to login with token: ' + this.state.token);
+    var settings = {
+      method: "GET",
+      headers: {
+        'Accept': 'application/json',
+        'authorization': authorization,
+      },      
+    };      
+    fetch(GLOBAL.API_PATH + "api/security", settings)
+      .then((response) => response.json())
+      .then((responseData) => {
+        this.setSecuritiesList(responseData);
+        console.log(responseData[0]);
+      })
+      .catch((error) => {
+        this._showAlert('GET Securities', 'Retrieve securities error: ' + error.message);
+      })    
+  }
+
 
   setClientsList(responsedata){
     //this._showAlert('Download', 'Logged in successfull: ' + responsedata.access_token);
@@ -81,7 +122,8 @@ class SelectionScreen extends React.Component{
       () => AsyncStorage.setItem('SberPBAppState', JSON.stringify(this.state))
     );
 
-    navigate('Positions', {token: this.state.token, clients: this.state.clients, securities: this.state.securities});
+    //navigate('Positions', {token: this.state.token, clients: this.state.clients, securities: this.state.securities});
+    this.requestSecurities();
   };
 
 
@@ -98,7 +140,7 @@ class SelectionScreen extends React.Component{
         'authorization': authorization,
       },      
     };      
-    fetch(API_PATH + "api/client", settings)
+    fetch(GLOBAL.API_PATH + "api/client", settings)
       .then((response) => response.json())
       .then((responseData) => {
         this.setClientsList(responseData);
@@ -149,7 +191,7 @@ class SelectionScreen extends React.Component{
       },
       body: body,
     };      
-    fetch(API_PATH + "token", settings)
+    fetch(GLOBAL.API_PATH + "token", settings)
       .then((response) => response.json())
       .then((responseData) => {
         this.setLoginUser(responseData);

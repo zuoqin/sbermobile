@@ -13,21 +13,44 @@ import {
   Picker,
   View,
   Linking,
-  AsyncStorage
+  AsyncStorage,
+  ListView,
+  ScrollView,
+
+  TouchableHighlight,
+  TouchableNativeFeedback,
+  TouchableWithoutFeedback,
+  TouchableOpacity,
 } from 'react-native';
 
+import BackgroundTimer from 'react-native-background-timer';
 
 import { StackNavigator } from 'react-navigation';
+import PositionCell from './PositionCell';
+
+GLOBAL = require('./global');
 
 export default class PositionsScreen extends React.Component{
   static navigationOptions = {
     title: 'Клиент',
   };
+
+  isUpdated = true;
+
+
   constructor(props) {
     super(props);
+    this.ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
     this.state = {
       language: "js",
       isLoggedIn: true,
+
+      isLoading: false,
+      page: -1,
+      searchMode: false,
+      query: '',
+      dataSource: this.ds.cloneWithRows(['7 Harsh Realities Of Life Millennials Need To Understand', 'Millennials. They may not yet be the present, but they’re certainly the future. These young, uninitiated minds will someday soon become our politicians, doctors, scientists, chefs, television producers, fashion designers, manufacturers, and, one would hope, the new proponents of liberty. But are they ready for it? It’s time millennials understood these 7 harsh realities of life so we don’t end up with a generation of gutless adult babies running the show.','Japanese Government Bond Futures Are Flash-Crashing (Again)', 'Remember that once-in-a-lifetime, ']),
+
     }
   };
 
@@ -64,6 +87,53 @@ export default class PositionsScreen extends React.Component{
     });*/}
   }
 
+  getDataSource(positions: Array<any>): ListView.DataSource{
+    this.isUpdated = false;
+    this.setState({dataSource: this.ds.cloneWithRows(positions)});
+    this.isUpdated = true;
+    return this.state.dataSource.cloneWithRows(positions);
+  }
+
+  setPositions(responseData){
+    console.log(responseData.length);
+    this.state.isLoading = false;
+    this.getDataSource(responseData);
+  };
+
+  getPositions(){
+    if (this.isUpdated == false) {
+      this._showAlert('Download', 'Download page failed');
+      return;
+    }
+    
+    if (this.state.isLoading == true) {
+      this._showAlert('Download', 'Downloading, please wait...');
+      return;
+    }
+    this.state.isLoading = true;
+
+    var settings = {
+      method: "GET",
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'authorization': 'Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJpc3MiOiJ6dW9xaW4iLCJleHAiOjE1MDQwODM0NjksImlhdCI6MTUwMzk5NzA2OX0.',
+      },
+    };      
+    fetch(GLOBAL.API_PATH + "api/position?client=" + this.state.selectedclient, settings)
+      .then((response) => response.json())
+      .then((responseData) => {
+          this.setPositions(responseData);
+          console.log('On Get Positions');
+        })
+      .catch((error) => {
+        this._showAlert('Download', 'Download Positions failed with error: ' + error.message);
+        this.state.isLoading = false;
+      });
+
+  };
+
+
   compare(a,b) {
     if (a.code > b.code)
       return 1;
@@ -84,7 +154,59 @@ export default class PositionsScreen extends React.Component{
   onClientChange(client, index){
     console.log('client=' + client + ' index=' + index);
     this.setState({selectedclient: client});
+
+    // Start a timer that runs continuous after X milliseconds
+    const intervalId = BackgroundTimer.setInterval(() => {
+      // this will be executed every 200 ms
+      // even when app is the the background
+      this.getPositions();
+      console.log('tic');
+    }, 200); 
   }
+
+
+
+  renderSeparator(
+    sectionID: number | string,
+    rowID: number | string,
+    adjacentRowHighlighted: boolean
+  ) {
+    return (
+      <View
+        key={"SEP_" + sectionID + "_" + rowID}
+        style={[styles.listView.rowSeparator, adjacentRowHighlighted && styles.listView.rowSeparatorHighlighted]}
+      />
+    );
+  };
+
+
+  renderRow(
+    position: Object,
+    sectionID: number | string,
+    rowID: number | string,
+    highlightRowFunction: (sectionID: ?number | string, rowID: ?number | string) => void,
+  ) {
+    var sTitle = '123456789012345';
+    var nLength = 15;
+    if(position[0] !== undefined) 
+    {
+      console.log('position title: ' + position[0]);
+      sTitle = position[0];
+    }
+    nLength = sTitle.length;
+    return (
+      <PositionCell
+        position={position}
+        securities = {this.props.navigation.state.params.securities}
+        onSelect={() => this.selectMediaItem(position)}
+        onHighlight={() => highlightRowFunction(sectionID,rowID)}
+        onDeHighlight={() => highlightRowFunction(null,null)}
+      />  
+    );
+  };
+
+
+
 
   render() {
     const { navigate } = this.props.navigation;
@@ -97,10 +219,30 @@ export default class PositionsScreen extends React.Component{
             onValueChange={(itemValue, itemIndex) => this.onClientChange(itemValue, itemIndex)}>
             {this.showclients(params.clients)}
           </Picker>
+
+
+          <ListView
+            style={styles.list}
+            dataSource={this.state.dataSource}
+            renderRow={this.renderRow.bind(this)}
+          />          
         </View>
       )
 
   }
+
+
+  selectMediaItem(positionItem) {
+
+    var props = {onNavigate: this.props.passProps.onNavigate,
+      empid: positionItem.empid,
+      birthday: employeeItem.birthday,
+      empname: employeeItem.empname
+    }
+    //this.props.passProps.onNavigate(UIExplorerActions.ModuleAction('NewEmployeeDetail', props));
+  };
+
+
 }
 
 const styles = StyleSheet.create({
@@ -120,4 +262,9 @@ const styles = StyleSheet.create({
     color: '#333333',
     marginBottom: 5,
   },
+
+  list: {
+    flexDirection: 'row',
+    flexWrap: 'wrap'
+  },  
 });
